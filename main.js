@@ -13,22 +13,30 @@ const {
 } = require('electron')
 
 
+const menuEvent = (action) => {
+  switch(action){        
+    case 'openfile': //新建文件
+      dialog.showOpenDialog({
+        properties: [ 'openFile' ],
+        message: '选择需要缩略图的文件',
+        filters: [
+          {name: '3D', extensions: ['stl']},
+          {name: 'All Files', extensions: ['*']}
+        ]
+      },function (files) {
+          if (files) {
+            console.log(files);
+            mainWindow.webContents.send('stlthumb-selected_file', files)
+          }
+      });
+      break;
+    }
+}
+
 const template = [{
   label: '选择文件',
   click: function () {
-    dialog.showOpenDialog({
-      properties: [ 'openFile' ],
-      message: '选择需要缩略图的文件',
-      filters: [
-        {name: '3D', extensions: ['stl']},
-        {name: 'All Files', extensions: ['*']}
-      ]
-    },function (files) {
-        if (files) {
-          console.log(files);
-          mainWindow.webContents.send('stlthumb-selected_file', files)
-        }
-    });
+    menuEvent('openfile');
   }
 }]
 menu = Menu.buildFromTemplate(template);
@@ -42,17 +50,17 @@ let mainWindow
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 320, // 窗口宽度
-    height: 670, // 窗口高度
-    fullscreen: false // 不允许全屏
-   // resizable: false // 不允许改变窗口size
+    width: 324 // 窗口宽度
+    ,height: 670 // 窗口高度
+    ,fullscreen: false // 不允许全屏
+    ,resizable: false // 不允许改变窗口size
   })
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html')
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools()
+  //mainWindow.webContents.openDevTools()
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {
@@ -107,6 +115,9 @@ ipcMain.on('stlthumb', (event, stlrealpath) => {
       });
     }
   });
+});
+ipcMain.on('menu', (event, menuname) => {
+  menuEvent(menuname);
 });
 
 

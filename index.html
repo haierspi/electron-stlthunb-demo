@@ -5,13 +5,14 @@
     <title>预览3D缩略图</title>
     <script src="./renderer.js"></script>
   </head>
-  <body>
-    <h1>选择或者输入STL格式的3D模型文件!</h1>
+  <body bgcolor="#F0F0F0">
+    <h5>选择或者输入STL格式的3D模型文件!</h5>
 
+    <button onclick="menu_openfile()">获取缩略图</button>
+    <input type="text" name="input" id="input" value="" style="width: 209px;">
 
-    <input type="text" name="input" id="input" value="stl/test">
-
-    <button onclick="getstlthumb()">获取缩略图</button>
+    
+    <br/><br/>
     <div id="stlthumb" class="stlthumb"></div>
   </body>
 </html>
