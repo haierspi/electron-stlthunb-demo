@@ -13,4 +13,4 @@
 
 ## License
 
-[GPL 2.0 (Public Domain)](LICENSE.md)
+[GPL 2.0 (Public Domain)](LICENSE)
