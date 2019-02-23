@@ -1,66 +1,74 @@
-const fs = require('fs');
-const child_process = require('child_process');
-const path = require('path');
-
+const fs = require('fs')
+const child_process = require('child_process')
+const path = require('path')
 
 // Modules to control application life and create native browser window
-const {
-  app,
-  Menu,
-  ipcMain,
-  BrowserWindow,
-  dialog
-} = require('electron')
-
-
-const menuEvent = (action) => {
-  switch(action){        
-    case 'openfile': //新建文件
-      dialog.showOpenDialog({
-        properties: [ 'openFile' ],
-        message: '选择需要缩略图的文件',
-        filters: [
-          {name: '3D', extensions: ['stl']},
-          {name: 'All Files', extensions: ['*']}
-        ]
-      },function (files) {
-          if (files) {
-            console.log(files);
-            mainWindow.webContents.send('stlthumb-selected_file', files)
-          }
-      });
-      break;
-    }
-}
-
-const template = [{
-  label: '选择文件',
-  click: function () {
-    menuEvent('openfile');
-  }
-}]
-menu = Menu.buildFromTemplate(template);
-Menu.setApplicationMenu(menu);
-
+const {app, ipcMain, BrowserWindow, Menu, Tray} = require('electron')
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
 
-function createWindow() {
+function createWindow () {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 324 // 窗口宽度
-    ,height: 670 // 窗口高度
-    ,fullscreen: false // 不允许全屏
-    ,resizable: false // 不允许改变窗口size
+    width: 1400, // 窗口宽度
+    height: 670, // 窗口高度
+    fullscreen: false, // 不允许全屏
+    resizable: true, // 不允许改变窗口size
+    skipTaskbar: false,
+    icon: 'icon.ico',
+    show: false,
+    allowclose: false
   })
+  Menu.setApplicationMenu(null)
+
+
 
   // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
+  mainWindow.loadURL('https://cn.bing.com/')
 
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show()
+  })
   // Open the DevTools.
-  //mainWindow.webContents.openDevTools()
+  // mainWindow.webContents.openDevTools()
+
+  appTray = new Tray('icon.ico')
+  // 系统托盘右键菜单
+
+  const contextMenu = Menu.buildFromTemplate([{
+    label: '关闭',
+    click: function () {
+      mainWindow.allowclose = true
+      app.quit()
+      app.quit(); // 因为程序设定关闭为最小化，所以调用两次关闭，防止最大化时一次不能关闭的情况
+    }
+  }])
+
+  // 设置此托盘图标的悬停提示内容
+  appTray.setToolTip('客服系统')
+
+  // 设置此图标的上下文菜单
+  appTray.setContextMenu(contextMenu)
+  // 单击右下角小图标显示应用
+  appTray.on('click', function () {
+    if (mainWindow.isVisible()) {
+      mainWindow.hide()
+      mainWindow.setSkipTaskbar(true)
+    } else {
+      mainWindow.show()
+      mainWindow.setSkipTaskbar(false)
+    }
+  })
+  var count = 0
+  setInterval(function () {
+    if (count++ % 2 == 0) {
+      appTray.setImage('icon.ico')
+    } else {
+      appTray.setImage('icon.ico')
+    }
+  }, 400)
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {
@@ -69,7 +77,31 @@ function createWindow() {
     // when you should delete the corresponding element.
     mainWindow = null
   })
+
+  mainWindow.on('close', function (event) {
+    if (!mainWindow.allowclose) {
+      mainWindow.setSkipTaskbar(true)
+      mainWindow.hide()
+      event.preventDefault()
+    }
+  })
+  let intervalhandle = null
+  mainWindow.on('focus', function () {
+    clearInterval(intervalhandle)
+    mainWindow.flashFrame(false)
+  })
+  mainWindow.on('blur', function () {
+    intervalhandle = setInterval(function () {
+      mainWindow.flashFrame(true)
+    }, 2000)
+  })
+  mainWindow.on('minimize', function () {
+    intervalhandle = setInterval(function () {
+      mainWindow.flashFrame(true)
+    }, 2000)
+  })
 }
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -91,44 +123,3 @@ app.on('activate', function () {
     createWindow()
   }
 })
-
-ipcMain.on('stlthumb', (event, stlrealpath) => {
-
-  let apppath = app.getAppPath().split(path.sep).join('/');
-  var tempfilename = guid();
-  var thumbfile = apppath + '/cache/' + tempfilename + '.png';
-  var scadfile = apppath + '/cache/' + tempfilename + '.scad';
-
-
-  fs.writeFile(scadfile, 'import("' + stlrealpath + '");', function (err) {
-    var command = apppath + '/openscad/openscad.exe --viewall --autocenter --imgsize=300,300 --colorscheme=Metallic ' + scadfile + ' -o ' + thumbfile;
-
-    if (err != null) event.sender.send('stlthumb-reply', false)
-    else {
-      child_process.exec(command, function (err, stdout, stderr) {
-        if (err != null) event.sender.send('stlthumb-reply', false)
-        else {
-          console.log(err, stdout, stderr);
-          fs.unlink(scadfile, function () {});
-          return event.sender.send('stlthumb-reply', true, thumbfile);
-        }
-      });
-    }
-  });
-});
-ipcMain.on('menu', (event, menuname) => {
-  menuEvent(menuname);
-});
-
-
-
-function S4() {
-  return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
-}
-
-function guid() {
-  return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
-}
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
